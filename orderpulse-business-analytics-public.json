@@ -1,0 +1,718 @@
+{
+  "name": "OrderPulse Business Analytics",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        -224
+      ],
+      "id": "8c7608e4-caa3-40d8-ae8e-583a8c532fd5",
+      "name": "    Telegram Trigger (Production)"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        160
+      ],
+      "id": "4974060d-7765-48db-a619-a31c68aa7721",
+      "name": "Manual Trigger (Development)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        -32
+      ],
+      "id": "7b088fc3-eb89-4673-a655-314ecd18c5ae",
+      "name": "Schedule Trigger (Automated Reports)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f64a195b-222c-404c-a5be-3648bb240973",
+              "leftValue": "={{$json.orderStatus}}",
+              "rightValue": "processing",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        64
+      ],
+      "id": "d1475b3d-9b8d-40a6-9839-cf8797aa0fad",
+      "name": "Filter Processing Orders"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst orders = items.map(item => item.json);\n\nconst processingOrders = orders.length;\n\nconst processingRevenue = orders.reduce(\n  (sum, order) => sum + Number(order.orderPrice || 0),\n  0\n);\n\nconst totalItems = orders.reduce(\n  (sum, order) => sum + Number(order.quantity || 0),\n  0\n);\n\nconst averageOrderValue =\n  processingOrders > 0\n    ? processingRevenue / processingOrders\n    : 0;\n\n// Orders by employee\nconst employeeStats = {};\n\nfor (const order of orders) {\n  const employee = order.employeeName || 'Unknown';\n  employeeStats[employee] = (employeeStats[employee] || 0) + 1;\n}\n\nconst employeeEntries = Object.entries(employeeStats)\n  .sort((a, b) => b[1] - a[1]);\n\nconst topEmployee = employeeEntries[0]?.[0] || 'No data';\nconst topEmployeeOrders = employeeEntries[0]?.[1] || 0;\n\nconst topEmployees = employeeEntries\n  .slice(0, 3)\n  .map(([name, count], index) => {\n    const medals = ['🥇', '🥈', '🥉'];\n    return `${medals[index]} ${name} — ${count} orders`;\n  })\n  .join('\\n');\n\nconst employeeBreakdown = employeeEntries\n  .map(([name, count]) => `• ${name}: ${count}`)\n  .join('\\n');\n\n// Product popularity\nconst productStats = {};\n\nfor (const order of orders) {\n  const product = order.product || 'Unknown';\n  const quantity = Number(order.quantity || 0);\n\n  productStats[product] = (productStats[product] || 0) + quantity;\n}\n\nconst productEntries = Object.entries(productStats)\n  .sort((a, b) => b[1] - a[1]);\n\nconst topProduct = productEntries[0]?.[0] || 'No data';\nconst topProductQuantity = productEntries[0]?.[1] || 0;\n\nreturn [\n  {\n    json: {\n      processingOrders,\n      processingRevenue: Number(processingRevenue.toFixed(2)),\n      averageOrderValue: Number(averageOrderValue.toFixed(2)),\n      totalItems,\n      topEmployee,\n      topEmployeeOrders,\n      topEmployees,\n      topProduct,\n      topProductQuantity,\n      employeeBreakdown,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        -32
+      ],
+      "id": "7682a714-2a28-42f0-b187-845d2ea0edf9",
+      "name": "Calculate Processing Metrics"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d559d151-368a-42dc-8b91-68f5735ecaf2",
+              "name": "orderID",
+              "value": "={{$json.orderID}}",
+              "type": "string"
+            },
+            {
+              "id": "d1a9bcf1-48d6-4502-9ee4-6a651c5eb604",
+              "name": "employeeName",
+              "value": "={{$json.employeeName}}",
+              "type": "string"
+            },
+            {
+              "id": "56121101-8857-4529-8df5-e3dcb5da38db",
+              "name": "orderDate",
+              "value": "={{$json.orderDate}}",
+              "type": "string"
+            },
+            {
+              "id": "c6a6fe31-c52d-4f4c-8dd9-dcbfdf65d0eb",
+              "name": "customerName",
+              "value": "={{$json.customerName}}",
+              "type": "string"
+            },
+            {
+              "id": "d522ff13-698a-435e-9f5d-b1e8e2289cab",
+              "name": "product",
+              "value": "={{$json.product}}",
+              "type": "string"
+            },
+            {
+              "id": "a52e42ad-0d7f-4582-82bc-70ea129cb0ba",
+              "name": "quantity",
+              "value": "={{$json.quantity}}",
+              "type": "string"
+            },
+            {
+              "id": "50858737-d1c4-4dee-b653-f8623eccdd99",
+              "name": "orderPrice",
+              "value": "={{$json.orderPrice}}",
+              "type": "string"
+            },
+            {
+              "id": "b2e20d33-5a29-40d6-b106-69cdcbcbf526",
+              "name": "orderStatus",
+              "value": "={{$json.orderStatus}}",
+              "type": "string"
+            },
+            {
+              "id": "b7c76d89-3923-4147-ad8b-8980587209bf",
+              "name": "salesChannel",
+              "value": "={{$json.salesChannel}}",
+              "type": "string"
+            },
+            {
+              "id": "1545f539-bb0a-45a9-897f-c5c95aa890c0",
+              "name": "city",
+              "value": "={{$json.city}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        256
+      ],
+      "id": "9e5cc563-c434-4268-8649-ff2377d0d53b",
+      "name": "Select Processing Order Fields"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=📊 OrderPulse Analytics\n\n📦 Processing Orders Report\n\n📦 Active orders: {{$json.processingOrders}}\n💶 Total value: €{{$json.processingRevenue.toFixed(2)}}\n💰 Average order: €{{$json.averageOrderValue.toFixed(2)}}\n🛍 Total items: {{$json.totalItems}}\n\n🏆 Top employees:\n\n{{$json.topEmployees}}\n\n🏆 Top product:\n{{$json.topProduct}} — {{$json.topProductQuantity}} items\n\n🕒 Generated:\n{{$now.setZone('Europe/Berlin').toFormat('dd.MM.yyyy HH:mm')}}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        64
+      ],
+      "id": "5007f31c-734d-4e3d-97c8-0a9357b7f5b6",
+      "name": "Telegram Report"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Select your Google Sheets document"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 378588577,
+          "mode": "list",
+          "cachedResultName": "Processing Queue"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "orderID": "={{$json.orderID}}",
+            "orderDate": "={{$json.orderDate}}",
+            "customerName": "={{$json.customerName}}",
+            "employeeName": "={{$json.employeeName}}",
+            "product": "={{$json.product}}",
+            "quantity": "={{$json.quantity}}",
+            "orderPrice": "={{$json.orderPrice}}",
+            "orderStatus": "={{$json.orderStatus}}",
+            "salesChannel": "={{$json.salesChannel}}",
+            "city": "={{$json.city}}",
+            "lastSyncedAt": "={{$now.setZone('Europe/Berlin').toFormat('dd.MM.yyyy HH:mm')}}"
+          },
+          "matchingColumns": [
+            "orderID"
+          ],
+          "schema": [
+            {
+              "id": "orderID",
+              "displayName": "orderID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "orderDate",
+              "displayName": "orderDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customerName",
+              "displayName": "customerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "employeeName",
+              "displayName": "employeeName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "product",
+              "displayName": "product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orderPrice",
+              "displayName": "orderPrice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orderStatus",
+              "displayName": "orderStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "salesChannel",
+              "displayName": "salesChannel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lastSyncedAt",
+              "displayName": "lastSyncedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        880,
+        256
+      ],
+      "id": "b4fc67c4-d061-40cb-958a-34f66787b203",
+      "name": "Save Processing Queue"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Select your Google Sheets document"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 907270001,
+          "mode": "list",
+          "cachedResultName": "Report History"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reportDate": "={{$now.setZone('Europe/Berlin').toFormat('dd.MM.yyyy HH:mm')}}",
+            "processingOrders": "={{$json.processingOrders}}",
+            "processingRevenue": "={{$json.processingRevenue}}",
+            "averageOrderValue": "={{$json.averageOrderValue}}",
+            "totalItems": "={{$json.totalItems}}",
+            "topEmployee": "={{$json.topEmployee}}",
+            "topEmployeeOrders": "={{$json.topEmployeeOrders}}",
+            "topProduct": "={{$json.topProduct}}",
+            "topProductQuantity": "={{$json.topProductQuantity}}",
+            "topEmployees": "={{$json.topEmployees}}",
+            "employeeBreakdown": "={{$json.employeeBreakdown}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "reportDate",
+              "displayName": "reportDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processingOrders",
+              "displayName": "processingOrders",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processingRevenue",
+              "displayName": "processingRevenue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "averageOrderValue",
+              "displayName": "averageOrderValue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "totalItems",
+              "displayName": "totalItems",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topEmployee",
+              "displayName": "topEmployee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topEmployeeOrders",
+              "displayName": "topEmployeeOrders",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topProduct",
+              "displayName": "topProduct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topProductQuantity",
+              "displayName": "topProductQuantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topEmployees",
+              "displayName": "topEmployees",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "employeeBreakdown",
+              "displayName": "employeeBreakdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        880,
+        -128
+      ],
+      "id": "cf6464c1-6d57-4ea5-95c9-e644997100c6",
+      "name": "Save Report History"
+    },
+    {
+      "parameters": {
+        "jsCode": "const orders = $input.all();\n\nconst processingCount = orders.filter(\n  item => item.json.orderStatus === 'processing'\n).length;\n\nreturn [\n  {\n    json: {\n      processingCount,\n      hasProcessingOrders: processingCount > 0,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -320
+      ],
+      "id": "cfdaf12b-b9f2-422a-921f-9ef569b3ce29",
+      "name": "Check Processing Count"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2529db88-3243-4896-93ec-783223ba475a",
+              "leftValue": "={{$json.hasProcessingOrders}}",
+              "rightValue": "=",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        656,
+        -320
+      ],
+      "id": "7f471755-5fea-4bc7-bc8d-90e68b8e5b65",
+      "name": "Check Processing Orders"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=📊 OrderPulse Analytics\n\n✅ Great news!\n\nThere are currently no orders with the \"processing\" status.\n\n📅 {{ $now.setZone('Europe/Berlin').toFormat('dd.MM.yyyy HH:mm') }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        -320
+      ],
+      "id": "b05453ce-ce8d-4e0b-ad16-8adca59a409c",
+      "name": "No Processing Orders Alert"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Select your Google Sheets document"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 300133454,
+          "mode": "list",
+          "cachedResultName": "Orders"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        -32
+      ],
+      "id": "bead60e3-d103-4f66-a0e5-1e23e8fa1054",
+      "name": "Read Orders"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger (Development)": {
+      "main": [
+        [
+          {
+            "node": "Read Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (Automated Reports)": {
+      "main": [
+        [
+          {
+            "node": "Read Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "    Telegram Trigger (Production)": {
+      "main": [
+        [
+          {
+            "node": "Read Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Processing Orders": {
+      "main": [
+        [
+          {
+            "node": "Select Processing Order Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Processing Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Select Processing Order Fields": {
+      "main": [
+        [
+          {
+            "node": "Save Processing Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Processing Metrics": {
+      "main": [
+        [
+          {
+            "node": "Save Report History",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Report": {
+      "main": [
+        []
+      ]
+    },
+    "Save Report History": {
+      "main": [
+        []
+      ]
+    },
+    "Check Processing Count": {
+      "main": [
+        [
+          {
+            "node": "Check Processing Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Processing Orders": {
+      "main": [
+        [],
+        [
+          {
+            "node": "No Processing Orders Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Orders": {
+      "main": [
+        [
+          {
+            "node": "Filter Processing Orders",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Processing Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
